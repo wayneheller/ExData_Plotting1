@@ -112,3 +112,8 @@ The four plots that you will need to construct are shown below.
 
 ![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
 
+## Running the Scripts
+* Scripts assume data file is in the working directory
+* Source the script file, e.g. plot1.R
+* Run createPlot1() to create the plot1.png file in the working directory
+* Repeat for other plots, e.g. createPlot2(), etc.
