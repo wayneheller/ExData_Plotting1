@@ -12,19 +12,41 @@
 
 # Returns a data.frome of Global Active Power By Frequency for the data between
 # 2007-02-01 and 2007-02-02.
-readSubsetData <- function() {
+# supports two methods of retrieval: read entire file and subset or read subset
+# using sqldf.  the later method is about 5x faster!
+# takes 1 input parameter to set retrieval method
+readSubsetData <- function(useSQL = TRUE) {
     
-    # Read data from downloaded dataset
-    dfHPC <- read.csv("household_power_consumption.txt", header = TRUE, sep=";", na.strings = "?")
+    # setup timer
+    timeStamp <- Sys.time()
+    if (useSQL == TRUE) {
+        library(sqldf)
+        
+        # read data using sqldf
+        dfHPC <- read.csv.sql("household_power_consumption.txt", header = TRUE, sep = ";", 
+                              sql = "select * from file where Date = '1/2/2007' or Date = '2/2/2007'")
+        on.exit(closeAllConnections())
+        
+        # create a date time column for filtering
+        datetime <- strptime(paste(dfHPC$Date, dfHPC$Time), "%d/%m/%Y %H:%M:%S")
+        dfHPC$datetime = datetime
+    }
     
-    # create a date time column for filtering
-    datetime <- strptime(paste(dfHPC$Date, dfHPC$Time), "%d/%m/%Y %H:%M:%S")
-    dfHPC$datetime = datetime
-    
-    # subset the data to just the dates needed
-    startDateTime <- strptime("01/02/2007 00:00:00", "%d/%m/%Y %H:%M:%S")
-    endDateTime <- strptime("03/02/2007 00:00:00", "%d/%m/%Y %H:%M:%S")
-    dfHPC <- subset(dfHPC, dfHPC$datetime >= startDateTime & dfHPC$datetime < endDateTime)
+    else {
+        # read data file in its entirety
+        dfHPC <- read.csv("household_power_consumption.txt", header = TRUE, sep=";", na.strings = "?")
+        
+        # create a date time column for filtering
+        datetime <- strptime(paste(dfHPC$Date, dfHPC$Time), "%d/%m/%Y %H:%M:%S")
+        dfHPC$datetime = datetime
+        
+        # subset the data to just the dates needed
+        startDateTime <- strptime("01/02/2007 00:00:00", "%d/%m/%Y %H:%M:%S")
+        endDateTime <- strptime("03/02/2007 00:00:00", "%d/%m/%Y %H:%M:%S")
+        dfHPC <- subset(dfHPC, dfHPC$datetime >= startDateTime & dfHPC$datetime < endDateTime)
+    }
+    # show time taken
+    print(Sys.time() - timeStamp)
     
     return(dfHPC)
     
@@ -34,7 +56,13 @@ readSubsetData <- function() {
 # 2007-02-01 and 2007-02-02 and creates a png file of the plot
 createPlot3 <- function() {
     
-    dfHPC <- readSubsetData()
+    df <- readSubsetData()
+    
+    # close any open graphics devices
+    # this clears out any existing settings
+    while(length(dev.list()>1)) {
+        dev.off()
+    }
     
     # create the plot on the screen device
     plot(df$datetime,df$Sub_metering_1, type ="l", ylab="Energy sub metering", xlab = "")
